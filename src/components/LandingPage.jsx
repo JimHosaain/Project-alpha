@@ -15,12 +15,44 @@ const viewByPath = {
   '/signup': 'signup',
 }
 
+function getBasePath() {
+  if (typeof window === 'undefined') {
+    return '/'
+  }
+
+  const base = import.meta.env.BASE_URL || '/'
+  return base.endsWith('/') ? base.slice(0, -1) || '/' : base
+}
+
+function normalizePathname(pathname) {
+  const base = getBasePath()
+
+  if (base !== '/' && pathname.startsWith(base)) {
+    const trimmed = pathname.slice(base.length)
+    return trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+  }
+
+  return pathname
+}
+
+function toAppHref(path) {
+  const base = getBasePath()
+  const cleanPath = path === '/' ? '' : path
+
+  if (base === '/') {
+    return cleanPath || '/'
+  }
+
+  return `${base}${cleanPath}`
+}
+
 function getInitialView() {
   if (typeof window === 'undefined') {
     return 'home'
   }
 
-  return viewByPath[window.location.pathname] ?? 'notFound'
+  const appPath = normalizePathname(window.location.pathname)
+  return viewByPath[appPath] ?? 'notFound'
 }
 
 function LandingPage() {
@@ -42,7 +74,8 @@ function LandingPage() {
 
   useEffect(() => {
     const handlePopState = () => {
-      setView(viewByPath[window.location.pathname] ?? 'notFound')
+      const appPath = normalizePathname(window.location.pathname)
+      setView(viewByPath[appPath] ?? 'notFound')
     }
 
     window.addEventListener('popstate', handlePopState)
@@ -54,17 +87,17 @@ function LandingPage() {
   }
 
   const openSignUp = () => {
-    window.history.pushState({}, '', '/signup')
+    window.history.pushState({}, '', toAppHref('/signup'))
     setView('signup')
   }
 
   const openBuilder = () => {
-    window.history.pushState({}, '', '/builder')
+    window.history.pushState({}, '', toAppHref('/builder'))
     setView('builder')
   }
 
   const goHome = () => {
-    window.history.pushState({}, '', '/')
+    window.history.pushState({}, '', toAppHref('/'))
     setView('home')
   }
 
