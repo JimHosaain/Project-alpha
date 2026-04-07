@@ -1,10 +1,20 @@
 import { Suspense, lazy } from 'react'
 import { ArrowRight } from 'lucide-react'
 import MagneticButton from './ui/MagneticButton'
+import { useLoading } from '../contexts/LoadingContext'
 
 const DottedSurface = lazy(() => import('./ui/DottedSurface'))
 
 function HeroSection({ theme, onBuildClick }) {
+  const { startLoading } = useLoading()
+
+  const handleBuildClick = () => {
+    startLoading('Building your PC...')
+    setTimeout(() => {
+      onBuildClick()
+    }, 500)
+  }
+
   return (
     <section className="hero-section">
       <Suspense fallback={null}>
@@ -28,7 +38,7 @@ function HeroSection({ theme, onBuildClick }) {
         </p>
 
         <div className="hero-actions">
-          <MagneticButton type="button" className="primary-btn hero-primary-cta" onClick={onBuildClick}>
+          <MagneticButton type="button" className="primary-btn hero-primary-cta" onClick={handleBuildClick}>
             <span className="hero-primary-fill" aria-hidden="true" />
             <span className="hero-primary-icon" aria-hidden="true">
               <ArrowRight size={17} />

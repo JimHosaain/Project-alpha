@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { ArrowRight } from 'lucide-react'
 import FooterSection from './FooterSection'
 import MagneticButton from './MagneticButton'
+import { useLoading } from '../../contexts/LoadingContext'
 
 const STYLES = `
 .cinematic-footer-wrapper {
@@ -280,6 +281,23 @@ function MotionFooter() {
   const giantTextRef = useRef(null)
   const headingRef = useRef(null)
   const linksRef = useRef(null)
+  const { startLoading, stopLoading } = useLoading()
+
+  const handleGetStartedClick = (e) => {
+    e.preventDefault()
+    startLoading('Getting started...')
+    setTimeout(() => {
+      stopLoading()
+    }, 2000)
+  }
+
+  const handleAIBotClick = (e) => {
+    e.preventDefault()
+    startLoading('Loading AI Build Bot...')
+    setTimeout(() => {
+      stopLoading()
+    }, 2000)
+  }
 
   useEffect(() => {
     if (typeof window === 'undefined' || !wrapperRef.current) return undefined
@@ -371,7 +389,7 @@ function MotionFooter() {
 
             <div ref={linksRef} className="cinematic-link-groups">
               <div className="cinematic-pill-row">
-                <MagneticButton href="#" className="cinematic-pill cinematic-pill-main cinematic-pill-motion">
+                <MagneticButton onClick={handleGetStartedClick} className="cinematic-pill cinematic-pill-main cinematic-pill-motion">
                   <span className="cinematic-btn-fill" aria-hidden="true" />
                   <span className="cinematic-btn-icon" aria-hidden="true">
                     <ArrowRight size={18} />
@@ -379,7 +397,7 @@ function MotionFooter() {
                   <span className="cinematic-btn-label">Get Started</span>
                 </MagneticButton>
 
-                <MagneticButton href="#" className="cinematic-pill cinematic-pill-main cinematic-pill-motion">
+                <MagneticButton onClick={handleAIBotClick} className="cinematic-pill cinematic-pill-main cinematic-pill-motion">
                   <span className="cinematic-btn-fill" aria-hidden="true" />
                   <span className="cinematic-btn-icon" aria-hidden="true">
                     <ArrowRight size={18} />
