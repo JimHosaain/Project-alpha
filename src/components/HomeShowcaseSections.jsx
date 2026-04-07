@@ -1,5 +1,5 @@
 import MotionFooter from './ui/motion-footer'
-import { PlusIcon } from 'lucide-react'
+import { ChevronDown, PlusIcon } from 'lucide-react'
 
 const buildStats = [
   { value: '50,000+', label: 'Builds Created' },
@@ -59,22 +59,49 @@ const benchmarkBars = [
   { label: 'RX 6600', value: 65 },
 ]
 
+const faqItems = [
+  {
+    question: 'What is PC Builder?',
+    answer: 'PC Builder helps you pick compatible parts, compare prices, and plan complete builds faster.',
+  },
+  {
+    question: 'Which components can I compare?',
+    answer: 'You can compare CPUs, GPUs, memory, storage, power supplies, and cases with practical benchmarks.',
+  },
+  {
+    question: 'Does it check compatibility automatically?',
+    answer: 'Yes. Core fit checks are applied while selecting parts so common issues are highlighted early.',
+  },
+  {
+    question: 'Can I save and share my build?',
+    answer: 'Saved builds can be revisited later and shared with friends for review before purchase.',
+  },
+  {
+    question: 'Do prices come from local retailers?',
+    answer: 'Yes. The platform is focused on local availability so you can compare realistic in-stock options.',
+  },
+]
+
 const latestPosts = [
   {
     title: 'Why DDR5 Matters in 2026',
     category: 'Guide',
+    description: 'Understand latency, bandwidth, and where DDR5 actually improves day-to-day performance.',
   },
   {
     title: 'Best Coolers for Quiet Builds',
     category: 'Parts',
+    description: 'A short list of cooling options that keep thermals stable without adding extra noise.',
   },
   {
     title: 'How to Balance GPU and CPU',
     category: 'Advice',
+    description: 'Avoid common bottlenecks with practical pairing tips for gaming and creator workflows.',
   },
   {
     title: 'Choosing the Right PSU Wattage',
     category: 'Safety',
+    description: 'Pick reliable headroom for future upgrades while staying within efficient power ranges.',
   },
 ]
 
@@ -164,6 +191,25 @@ function HomeShowcaseSections({ onBenchmarkCompare }) {
         </div>
       </section>
 
+      <section className="home-section faq-section">
+        <div className="faq-shell">
+          <p className="faq-kicker">FAQ</p>
+          <h2>Frequently asked questions.</h2>
+
+          <div className="faq-list" role="list">
+            {faqItems.map((item) => (
+              <details className="faq-item" key={item.question}>
+                <summary>
+                  <span>{item.question}</span>
+                  <ChevronDown size={16} aria-hidden="true" />
+                </summary>
+                <p>{item.answer}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="home-section benchmark-section">
         <div className="framed-section">
           <span className="framed-corner framed-corner-tl" aria-hidden="true" />
@@ -178,7 +224,12 @@ function HomeShowcaseSections({ onBenchmarkCompare }) {
           </div>
 
           <div className="benchmark-grid framed-grid">
-            <div className="chart-card">
+            <div className="chart-card benchmark-framed-card">
+              <span className="framed-corner framed-corner-tl" aria-hidden="true" />
+              <span className="framed-corner framed-corner-tr" aria-hidden="true" />
+              <span className="framed-corner framed-corner-bl" aria-hidden="true" />
+              <span className="framed-corner framed-corner-br" aria-hidden="true" />
+
               {benchmarkBars.map((bar) => (
                 <div className="chart-row" key={bar.label}>
                   <span>{bar.label}</span>
@@ -189,7 +240,12 @@ function HomeShowcaseSections({ onBenchmarkCompare }) {
               ))}
             </div>
 
-            <div className="benchmark-list">
+            <div className="benchmark-list benchmark-framed-card">
+              <span className="framed-corner framed-corner-tl" aria-hidden="true" />
+              <span className="framed-corner framed-corner-tr" aria-hidden="true" />
+              <span className="framed-corner framed-corner-bl" aria-hidden="true" />
+              <span className="framed-corner framed-corner-br" aria-hidden="true" />
+
               {benchmarkBars.map((bar) => (
                 <div className="benchmark-item" key={bar.label}>
                   <span>{bar.label}</span>
@@ -221,10 +277,14 @@ function HomeShowcaseSections({ onBenchmarkCompare }) {
         <div className="news-grid">
           {latestPosts.map((post) => (
             <article className="news-card" key={post.title}>
-              <div className="news-thumb" aria-hidden="true" />
+              <span className="news-corner-plus news-corner-plus-tl" aria-hidden="true" />
+              <span className="news-corner-plus news-corner-plus-tr" aria-hidden="true" />
+              <span className="news-corner-plus news-corner-plus-bl" aria-hidden="true" />
+              <span className="news-corner-plus news-corner-plus-br" aria-hidden="true" />
               <div className="news-content">
                 <span>{post.category}</span>
                 <h3>{post.title}</h3>
+                <p>{post.description}</p>
               </div>
             </article>
           ))}

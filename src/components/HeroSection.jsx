@@ -1,4 +1,5 @@
 import { Suspense, lazy } from 'react'
+import { ArrowRight } from 'lucide-react'
 import MagneticButton from './ui/MagneticButton'
 
 const DottedSurface = lazy(() => import('./ui/DottedSurface'))
@@ -27,8 +28,12 @@ function HeroSection({ theme, onBuildClick }) {
         </p>
 
         <div className="hero-actions">
-          <MagneticButton type="button" className="primary-btn" onClick={onBuildClick}>
-            Build Your PC
+          <MagneticButton type="button" className="primary-btn hero-primary-cta" onClick={onBuildClick}>
+            <span className="hero-primary-fill" aria-hidden="true" />
+            <span className="hero-primary-icon" aria-hidden="true">
+              <ArrowRight size={17} />
+            </span>
+            <span className="hero-primary-label">Build Your PC</span>
           </MagneticButton>
           <MagneticButton type="button" className="ghost-btn">
             Explore Builds
@@ -36,19 +41,8 @@ function HeroSection({ theme, onBuildClick }) {
         </div>
       </div>
 
-      <div className="hero-preview" aria-hidden="true">
-        <div className="preview-header">
-          <span />
-          <span />
-          <span />
-        </div>
-        <div className="preview-content">
-          <div className="line w-90" />
-          <div className="line w-70" />
-          <div className="line w-80" />
-          <div className="line w-60" />
-          <div className="line w-85" />
-        </div>
+      <div className="hero-video-panel hero-outline-panel" aria-hidden="true">
+        <div className="hero-outline-box" />
       </div>
     </section>
   )

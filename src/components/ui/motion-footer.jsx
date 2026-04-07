@@ -1,11 +1,9 @@
 import { useEffect, useRef } from 'react'
-import { AppleIcon, SmartphoneIcon } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import FooterSection from './FooterSection'
 import MagneticButton from './MagneticButton'
 
 const STYLES = `
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');
-
 .cinematic-footer-wrapper {
   --cf-bg-1: color-mix(in srgb, var(--ghost-bg), #ffffff 4%);
   --cf-bg-2: color-mix(in srgb, var(--ghost-bg), #000000 8%);
@@ -22,7 +20,7 @@ const STYLES = `
   overflow: hidden;
   background: linear-gradient(180deg, var(--cf-bg-1), var(--cf-bg-2));
   color: var(--cf-text);
-  font-family: 'Plus Jakarta Sans', 'Manrope', sans-serif;
+  font-family: 'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   z-index: 0;
 }
 
@@ -80,42 +78,6 @@ const STYLES = `
   background-clip: text;
 }
 
-.cinematic-marquee-wrap {
-  position: absolute;
-  top: 56px;
-  left: 0;
-  width: 100%;
-  overflow: hidden;
-  padding: 12px 0;
-  border-top: 1px solid var(--cf-border);
-  border-bottom: 1px solid var(--cf-border);
-  background: color-mix(in srgb, var(--cf-bg-1), transparent 15%);
-  backdrop-filter: blur(8px);
-  transform: rotate(-2deg) scale(1.08);
-}
-
-.cinematic-marquee-track {
-  display: flex;
-  width: max-content;
-  animation: cinematic-marquee 36s linear infinite;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.24em;
-  color: color-mix(in srgb, var(--cf-muted), #ffffff 10%);
-  text-transform: uppercase;
-}
-
-.cinematic-marquee-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 16px;
-  padding: 0 24px;
-}
-
-.cinematic-sep {
-  color: color-mix(in srgb, var(--cf-text), transparent 65%);
-}
-
 .cinematic-content {
   position: relative;
   z-index: 2;
@@ -125,7 +87,7 @@ const STYLES = `
   flex-direction: column;
   align-items: center;
   gap: 18px;
-  padding: 92px 0 44px;
+  padding: 92px 0 62px;
 }
 
 .cinematic-heading {
@@ -146,7 +108,7 @@ const STYLES = `
 
 .cinematic-legacy-footer {
   width: min(900px, 100%);
-  margin: 0 auto 16px;
+  margin: 22px auto 16px;
 }
 
 .cinematic-legacy-footer-card {
@@ -215,6 +177,7 @@ const STYLES = `
     inset 0 1px 1px color-mix(in srgb, var(--cf-text), transparent 90%);
   border-radius: 999px;
   transition: all 220ms ease;
+  text-decoration: none;
 }
 
 .cinematic-pill:hover {
@@ -231,6 +194,54 @@ const STYLES = `
   gap: 10px;
 }
 
+.cinematic-pill-motion {
+  position: relative;
+  overflow: hidden;
+  min-width: 208px;
+  justify-content: center;
+}
+
+.cinematic-btn-fill {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cf-text), transparent 2%);
+  transform: translateY(-50%);
+  transition: width 500ms ease;
+  z-index: 0;
+}
+
+.cinematic-btn-icon {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: color-mix(in srgb, var(--cf-bg-2), transparent 0%);
+  transition: transform 500ms ease;
+  z-index: 2;
+}
+
+.cinematic-btn-label {
+  position: relative;
+  z-index: 2;
+  transition: color 500ms ease;
+}
+
+.cinematic-pill-motion:hover .cinematic-btn-fill {
+  width: calc(100% - 12px);
+}
+
+.cinematic-pill-motion:hover .cinematic-btn-icon {
+  transform: translateY(-50%) translateX(6px);
+}
+
+.cinematic-pill-motion:hover .cinematic-btn-label {
+  color: color-mix(in srgb, var(--cf-bg-2), transparent 0%);
+}
+
 .cinematic-pill-small {
   padding: 10px 16px;
   font-size: 0.77rem;
@@ -243,11 +254,6 @@ const STYLES = `
   to { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
 }
 
-@keyframes cinematic-marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-
 @keyframes cinematic-heartbeat {
   0%, 100% { transform: scale(1); }
   15%, 45% { transform: scale(1.22); }
@@ -255,10 +261,6 @@ const STYLES = `
 }
 
 @media (max-width: 760px) {
-  .cinematic-marquee-wrap {
-    top: 44px;
-  }
-
   .cinematic-content {
     width: min(980px, 100% - 20px);
   }
@@ -273,30 +275,6 @@ const STYLES = `
   }
 }
 `
-
-const marqueeItems = [
-  'Accountability Redefined',
-  'Transparent Tracking',
-  '12-Step Progress',
-  'Sponsor Connection',
-  'Absolute Privacy',
-]
-
-const quickLinks = ['Privacy Policy', 'Terms of Service', 'Support']
-
-function MarqueeRow() {
-  return (
-    <>
-      {marqueeItems.map((item) => (
-        <div className="cinematic-marquee-item" key={item}>
-          <span>{item}</span>
-          <span className="cinematic-sep">✦</span>
-        </div>
-      ))}
-    </>
-  )
-}
-
 function MotionFooter() {
   const wrapperRef = useRef(null)
   const giantTextRef = useRef(null)
@@ -386,37 +364,28 @@ function MotionFooter() {
             BUILDER
           </div>
 
-          <div className="cinematic-marquee-wrap" aria-hidden="true">
-            <div className="cinematic-marquee-track">
-              <MarqueeRow />
-              <MarqueeRow />
-            </div>
-          </div>
-
           <div className="cinematic-content">
             <h2 ref={headingRef} className="cinematic-heading">
-              Ready to begin?
+              Ready to Build Your Dream PC?
             </h2>
 
             <div ref={linksRef} className="cinematic-link-groups">
               <div className="cinematic-pill-row">
-                <MagneticButton href="#" className="cinematic-pill cinematic-pill-main">
-                  <AppleIcon size={18} />
-                  Download iOS
+                <MagneticButton href="#" className="cinematic-pill cinematic-pill-main cinematic-pill-motion">
+                  <span className="cinematic-btn-fill" aria-hidden="true" />
+                  <span className="cinematic-btn-icon" aria-hidden="true">
+                    <ArrowRight size={18} />
+                  </span>
+                  <span className="cinematic-btn-label">Get Started</span>
                 </MagneticButton>
 
-                <MagneticButton href="#" className="cinematic-pill cinematic-pill-main">
-                  <SmartphoneIcon size={18} />
-                  Download Android
+                <MagneticButton href="#" className="cinematic-pill cinematic-pill-main cinematic-pill-motion">
+                  <span className="cinematic-btn-fill" aria-hidden="true" />
+                  <span className="cinematic-btn-icon" aria-hidden="true">
+                    <ArrowRight size={18} />
+                  </span>
+                  <span className="cinematic-btn-label">AI Build Bot</span>
                 </MagneticButton>
-              </div>
-
-              <div className="cinematic-pill-row">
-                {quickLinks.map((link) => (
-                  <MagneticButton key={link} href="#" className="cinematic-pill cinematic-pill-small">
-                    {link}
-                  </MagneticButton>
-                ))}
               </div>
             </div>
 
@@ -432,3 +401,5 @@ function MotionFooter() {
 }
 
 export default MotionFooter
+
+
