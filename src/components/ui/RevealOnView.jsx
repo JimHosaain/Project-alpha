@@ -3,8 +3,10 @@ import { motion, useReducedMotion } from 'motion/react'
 function RevealOnView({ children, className = '', delay = 0 }) {
   const shouldReduceMotion = useReducedMotion()
   const MotionDiv = motion.div
+  const isSmallScreen = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
 
-  if (shouldReduceMotion) {
+  // On smaller screens, render directly to avoid IntersectionObserver reveal stalls.
+  if (shouldReduceMotion || isSmallScreen) {
     return <div className={className}>{children}</div>
   }
 

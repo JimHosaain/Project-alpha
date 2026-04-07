@@ -8,6 +8,7 @@ import BuildFlowStep from './BuildFlowStep'
 import HomeShowcaseSections from './HomeShowcaseSections'
 import RevealOnView from './ui/RevealOnView'
 import NotFoundPage from './ui/NotFoundPage'
+import { useLoading } from '../contexts/LoadingContext'
 
 const viewByPath = {
   '/': 'home',
@@ -71,6 +72,11 @@ function LandingPage() {
 
   const [view, setView] = useState(getInitialView)
   const [isChatbotOpen, setIsChatbotOpen] = useState(false)
+  const { stopLoading } = useLoading()
+
+  useEffect(() => {
+    stopLoading()
+  }, [view, stopLoading])
 
   useEffect(() => {
     const handlePopState = () => {
@@ -141,7 +147,14 @@ function LandingPage() {
           </RevealOnView>
         ) : view === 'signup' ? (
           <RevealOnView>
-            <SignUpPage onBack={goHome} />
+            <SignUpPage
+              theme={theme}
+              onToggleTheme={toggleTheme}
+              onChatbotClick={openChatbot}
+              onHomeClick={goHome}
+              onBuildClick={openBuilder}
+              onBack={goHome}
+            />
           </RevealOnView>
         ) : (
           <RevealOnView>

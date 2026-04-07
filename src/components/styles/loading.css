@@ -52,8 +52,8 @@
 }
 
 .shimmer-text {
-  background-clip: text;
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   background-size: 200% auto;
   animation: textShimmer 2s ease-in-out infinite;

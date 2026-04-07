@@ -10,7 +10,6 @@ export function LoadingOverlay() {
     <div className={`loading-overlay ${isLoading ? 'active' : ''}`}>
       <div className="loading-overlay-content">
         <LoadingBreadcrumb text={loadingText} />
-        <p className="loading-overlay-text">{loadingText}</p>
       </div>
     </div>
   );

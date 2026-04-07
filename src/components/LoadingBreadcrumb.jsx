@@ -36,7 +36,10 @@ const Loader = React.forwardRef(
 
       if (!cachedPathLength && pathRef.current) {
         cachedPathLength = pathRef.current.getTotalLength();
-        setPathLength(cachedPathLength);
+        // Defer state update to avoid synchronous setState inside effect.
+        window.requestAnimationFrame(() => {
+          setPathLength(cachedPathLength);
+        });
       }
     }, []);
 

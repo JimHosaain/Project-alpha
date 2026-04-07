@@ -9,10 +9,10 @@ function HeroSection({ theme, onBuildClick }) {
   const { startLoading } = useLoading()
 
   const handleBuildClick = () => {
-    startLoading('Building your PC...')
+    startLoading('Cooking', 700)
     setTimeout(() => {
       onBuildClick()
-    }, 500)
+    }, 180)
   }
 
   return (

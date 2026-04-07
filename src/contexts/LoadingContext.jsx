@@ -1,17 +1,33 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 
 const LoadingContext = createContext();
 
 export function LoadingProvider({ children }) {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('Loading');
+  const timerRef = useRef(null);
 
-  const startLoading = useCallback((text = 'Loading') => {
+  const startLoading = useCallback((text = 'Loading', duration = 1200) => {
+    if (timerRef.current) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+
     setLoadingText(text);
     setIsLoading(true);
+
+    // Safety fallback so the overlay never gets stuck.
+    timerRef.current = window.setTimeout(() => {
+      setIsLoading(false);
+      timerRef.current = null;
+    }, duration);
   }, []);
 
   const stopLoading = useCallback(() => {
+    if (timerRef.current) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
     setIsLoading(false);
   }, []);
 
