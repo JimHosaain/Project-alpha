@@ -137,7 +137,7 @@ function LandingPage() {
             <RevealOnView delay={0.08}>
               <StackMarquee />
             </RevealOnView>
-            <RevealOnView delay={0.1}>
+            <RevealOnView>
               <HomeShowcaseSections onBenchmarkCompare={openBuilder} />
             </RevealOnView>
           </>

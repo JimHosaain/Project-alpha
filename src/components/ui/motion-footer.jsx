@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import { ArrowRight } from 'lucide-react'
 import FooterSection from './FooterSection'
 import MagneticButton from './MagneticButton'
 import { useLoading } from '../../contexts/LoadingContext'
@@ -82,7 +81,7 @@ const STYLES = `
 .cinematic-content {
   position: relative;
   z-index: 2;
-  width: min(980px, 100% - 36px);
+  width: min(1100px, 100% - 36px);
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -108,7 +107,7 @@ const STYLES = `
 }
 
 .cinematic-legacy-footer {
-  width: min(900px, 100%);
+  width: min(1040px, 100%);
   margin: 22px auto 16px;
 }
 
@@ -192,55 +191,8 @@ const STYLES = `
   font-weight: 700;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-}
-
-.cinematic-pill-motion {
-  position: relative;
-  overflow: hidden;
   min-width: 208px;
   justify-content: center;
-}
-
-.cinematic-btn-fill {
-  position: absolute;
-  left: 6px;
-  top: 50%;
-  width: 42px;
-  height: 42px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--cf-text), transparent 2%);
-  transform: translateY(-50%);
-  transition: width 500ms ease;
-  z-index: 0;
-}
-
-.cinematic-btn-icon {
-  position: absolute;
-  left: 18px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: color-mix(in srgb, var(--cf-bg-2), transparent 0%);
-  transition: transform 500ms ease;
-  z-index: 2;
-}
-
-.cinematic-btn-label {
-  position: relative;
-  z-index: 2;
-  transition: color 500ms ease;
-}
-
-.cinematic-pill-motion:hover .cinematic-btn-fill {
-  width: calc(100% - 12px);
-}
-
-.cinematic-pill-motion:hover .cinematic-btn-icon {
-  transform: translateY(-50%) translateX(6px);
-}
-
-.cinematic-pill-motion:hover .cinematic-btn-label {
-  color: color-mix(in srgb, var(--cf-bg-2), transparent 0%);
 }
 
 .cinematic-pill-small {
@@ -334,17 +286,19 @@ function MotionFooter() {
 
       const giantScale = 0.82 + progress * 0.18
       const giantTranslateY = (1 - progress) * 10
-      giant.style.opacity = String(progress)
+      const giantOpacity = 0.35 + progress * 0.65
+      giant.style.opacity = String(giantOpacity)
       giant.style.transform = `translateX(-50%) translateY(${giantTranslateY}vh) scale(${giantScale})`
 
-      const headingOpacity = Math.min(1, progress * 1.35)
+      const headingOpacity = Math.min(1, 0.72 + progress * 0.28)
       const headingTranslate = (1 - headingOpacity) * 50
       heading.style.opacity = String(headingOpacity)
       heading.style.transform = `translateY(${headingTranslate}px)`
 
-      const linksProgress = Math.min(1, Math.max(0, (progress - 0.08) / 0.92))
-      const linksTranslate = (1 - linksProgress) * 54
-      links.style.opacity = String(linksProgress)
+      const linksProgress = Math.min(1, Math.max(0, (progress - 0.04) / 0.96))
+      const linksOpacity = Math.min(1, 0.78 + linksProgress * 0.22)
+      const linksTranslate = (1 - linksProgress) * 32
+      links.style.opacity = String(linksOpacity)
       links.style.transform = `translateY(${linksTranslate}px)`
     }
 
@@ -389,20 +343,12 @@ function MotionFooter() {
 
             <div ref={linksRef} className="cinematic-link-groups">
               <div className="cinematic-pill-row">
-                <MagneticButton onClick={handleGetStartedClick} className="cinematic-pill cinematic-pill-main cinematic-pill-motion">
-                  <span className="cinematic-btn-fill" aria-hidden="true" />
-                  <span className="cinematic-btn-icon" aria-hidden="true">
-                    <ArrowRight size={18} />
-                  </span>
-                  <span className="cinematic-btn-label">Get Started</span>
+                <MagneticButton onClick={handleGetStartedClick} className="cinematic-pill cinematic-pill-main">
+                  Get Started
                 </MagneticButton>
 
-                <MagneticButton onClick={handleAIBotClick} className="cinematic-pill cinematic-pill-main cinematic-pill-motion">
-                  <span className="cinematic-btn-fill" aria-hidden="true" />
-                  <span className="cinematic-btn-icon" aria-hidden="true">
-                    <ArrowRight size={18} />
-                  </span>
-                  <span className="cinematic-btn-label">AI Build Bot</span>
+                <MagneticButton onClick={handleAIBotClick} className="cinematic-pill cinematic-pill-main">
+                  AI Build Bot
                 </MagneticButton>
               </div>
             </div>

@@ -1,7 +1,8 @@
 import { Suspense, lazy } from 'react'
-import { ArrowRight } from 'lucide-react'
 import MagneticButton from './ui/MagneticButton'
+import StarButton from './ui/StarButton'
 import { useLoading } from '../contexts/LoadingContext'
+import heroImage from '../assets/Cyberpunk-Inspired Gaming Rig.jpg'
 
 const DottedSurface = lazy(() => import('./ui/DottedSurface'))
 
@@ -22,6 +23,7 @@ function HeroSection({ theme, onBuildClick }) {
       </Suspense>
       <div className="hero-surface-glow" aria-hidden="true" />
 
+
       <div className="hero-copy">
         <p className="chip">Created by Team Alpha</p>
 
@@ -38,21 +40,27 @@ function HeroSection({ theme, onBuildClick }) {
         </p>
 
         <div className="hero-actions">
-          <MagneticButton type="button" className="primary-btn hero-primary-cta" onClick={handleBuildClick}>
-            <span className="hero-primary-fill" aria-hidden="true" />
-            <span className="hero-primary-icon" aria-hidden="true">
-              <ArrowRight size={17} />
-            </span>
-            <span className="hero-primary-label">Build Your PC</span>
-          </MagneticButton>
+          <StarButton className="chatbot-btn" onClick={handleBuildClick}>
+            Build Your PC
+          </StarButton>
           <MagneticButton type="button" className="ghost-btn">
             Explore Builds
           </MagneticButton>
         </div>
       </div>
 
-      <div className="hero-video-panel hero-outline-panel" aria-hidden="true">
-        <div className="hero-outline-box" />
+      <div className="hero-video-panel" aria-hidden="true">
+        <div className="hero-image-container">
+          <div className="hero-image-wrapper">
+            <div className="hero-image-frame">
+              <img
+                src={heroImage}
+                alt="Gaming PC Build"
+                loading="lazy"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   )
