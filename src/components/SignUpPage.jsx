@@ -1,15 +1,6 @@
 import { useRef } from 'react'
-import StarButton from './ui/StarButton'
-import ThemeSwitchButton from './ui/ThemeSwitchButton'
 
-function SignUpPage({
-  onBack,
-  onHomeClick,
-  onBuildClick,
-  onToggleTheme,
-  onChatbotClick,
-  theme,
-}) {
+function SignUpPage({ onBack }) {
   const emailInputRef = useRef(null)
 
   const focusSignUpForm = () => {
@@ -20,31 +11,35 @@ function SignUpPage({
 
   return (
     <section className="signup-page">
-      <header className="nav-wrap signup-nav-wrap">
-        <nav className="nav-inner">
-          <div className="brand">
-            <span className="brand-mark" aria-hidden="true">
-              <span />
-            </span>
-            <p>
-              PCB <span>by alpha</span>
-            </p>
+      <div className="signup-body">
+        <div className="signup-intro">
+          <p className="chip signup-chip">Created for PC builders</p>
+          <h1>Create your account.</h1>
+          <p className="signup-lead">
+            Save your custom builds, keep component notes in one place, and move between budget
+            ideas without losing the visual language of the home page.
+          </p>
+
+          <div className="signup-points">
+            <article>
+              <strong>Build history</strong>
+              <span>Save and revisit PC plans anytime.</span>
+            </article>
+            <article>
+              <strong>Part tracking</strong>
+              <span>Keep your chosen components organized.</span>
+            </article>
+            <article>
+              <strong>Shared workflow</strong>
+              <span>Start on home, continue inside the builder.</span>
+            </article>
+            <article>
+              <strong>Theme aware</strong>
+              <span>Matches the same dark and light modes.</span>
+            </article>
           </div>
 
-          <ul className="nav-links">
-            <li onClick={onHomeClick}>Home</li>
-            <li onClick={onBuildClick}>Builds</li>
-            <li>Forrum</li>
-            <li>News</li>
-          </ul>
-
-          <div className="nav-actions">
-            <ThemeSwitchButton theme={theme} onToggleTheme={onToggleTheme} />
-
-            <StarButton className="chatbot-btn" onClick={onChatbotClick}>
-              Chatbot
-            </StarButton>
-
+          <div className="signup-intro-actions">
             <button type="button" className="plain-pill-btn" onClick={onBack}>
               Back
             </button>
@@ -52,10 +47,8 @@ function SignUpPage({
               Sign up
             </button>
           </div>
-        </nav>
-      </header>
+        </div>
 
-      <div className="signup-body">
         <div className="signup-card">
           <p className="signup-kicker">WELCOME DEVELOPER</p>
           <h2>Create your account</h2>

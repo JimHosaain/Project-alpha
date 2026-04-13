@@ -1,7 +1,15 @@
 import StarButton from './ui/StarButton'
 import ThemeSwitchButton from './ui/ThemeSwitchButton'
 
-function Navbar({ theme, onToggleTheme, onLoginClick, onChatbotClick, activeView = 'home' }) {
+function Navbar({
+  theme,
+  onToggleTheme,
+  onLoginClick,
+  onChatbotClick,
+  onHomeClick,
+  onBuildClick,
+  activeView = 'home',
+}) {
   return (
     <header className="nav-wrap">
       <nav className="nav-inner">
@@ -15,8 +23,9 @@ function Navbar({ theme, onToggleTheme, onLoginClick, onChatbotClick, activeView
         </div>
 
         <ul className="nav-links">
-          <li className={activeView === 'home' ? 'is-active' : ''}>Home</li>
-          <li>Builds</li>
+          <li className={activeView === 'home' ? 'is-active' : ''} onClick={onHomeClick}>Home</li>
+          <li className={activeView === 'builder' || activeView === 'manualBuilder' ? 'is-active' : ''} onClick={onBuildClick}>Builds</li>
+          <li className={activeView === 'signup' ? 'is-active' : ''} onClick={onLoginClick}>Account</li>
           <li>Forrum</li>
           <li>News</li>
         </ul>

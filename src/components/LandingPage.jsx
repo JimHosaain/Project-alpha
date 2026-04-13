@@ -5,6 +5,7 @@ import StackMarquee from './StackMarquee'
 import SignUpPage from './SignUpPage'
 import ChatbotPanel from './ChatbotPanel'
 import BuildFlowStep from './BuildFlowStep'
+import ManualBuilderPage from './ManualBuilderPage'
 import HomeShowcaseSections from './HomeShowcaseSections'
 import RevealOnView from './ui/RevealOnView'
 import NotFoundPage from './ui/NotFoundPage'
@@ -13,6 +14,7 @@ import { useLoading } from '../contexts/LoadingContext'
 const viewByPath = {
   '/': 'home',
   '/builder': 'builder',
+  '/manual-builder': 'manualBuilder',
   '/signup': 'signup',
 }
 
@@ -71,6 +73,10 @@ function LandingPage() {
   }, [theme])
 
   const [view, setView] = useState(getInitialView)
+  const [manualBuildContext, setManualBuildContext] = useState({
+    presetId: 'manual',
+    budget: 85000,
+  })
   const [isChatbotOpen, setIsChatbotOpen] = useState(false)
   const { stopLoading } = useLoading()
 
@@ -102,6 +108,12 @@ function LandingPage() {
     setView('builder')
   }
 
+  const openManualBuilder = ({ presetId = 'manual', budget = 85000 } = {}) => {
+    setManualBuildContext({ presetId, budget })
+    window.history.pushState({}, '', toAppHref('/manual-builder'))
+    setView('manualBuilder')
+  }
+
   const goHome = () => {
     window.history.pushState({}, '', toAppHref('/'))
     setView('home')
@@ -120,39 +132,45 @@ function LandingPage() {
       <div className="grid-overlay" aria-hidden="true" />
 
       <div className="content-shell">
+        <RevealOnView>
+          <Navbar
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            onLoginClick={openSignUp}
+            onChatbotClick={openChatbot}
+            onHomeClick={goHome}
+            onBuildClick={openBuilder}
+            activeView={view}
+          />
+        </RevealOnView>
+
         {view === 'home' ? (
           <>
-            <RevealOnView>
-              <Navbar
-                theme={theme}
-                onToggleTheme={toggleTheme}
-                onLoginClick={openSignUp}
-                onChatbotClick={openChatbot}
-                activeView={view}
-              />
-            </RevealOnView>
-            <RevealOnView delay={0.05}>
+            <RevealOnView delay={0.02} variant="hero">
               <HeroSection theme={theme} onBuildClick={openBuilder} />
             </RevealOnView>
-            <RevealOnView delay={0.08}>
+            <RevealOnView delay={0.04} variant="soft">
               <StackMarquee />
             </RevealOnView>
-            <RevealOnView>
+            <RevealOnView delay={0.06} variant="lift">
               <HomeShowcaseSections onBenchmarkCompare={openBuilder} />
             </RevealOnView>
           </>
         ) : view === 'builder' ? (
           <RevealOnView>
-            <BuildFlowStep onBack={goHome} />
+            <BuildFlowStep onBack={goHome} onOpenManualBuilder={openManualBuilder} />
+          </RevealOnView>
+        ) : view === 'manualBuilder' ? (
+          <RevealOnView>
+            <ManualBuilderPage
+              onBack={openBuilder}
+              presetId={manualBuildContext.presetId}
+              budget={manualBuildContext.budget}
+            />
           </RevealOnView>
         ) : view === 'signup' ? (
           <RevealOnView>
             <SignUpPage
-              theme={theme}
-              onToggleTheme={toggleTheme}
-              onChatbotClick={openChatbot}
-              onHomeClick={goHome}
-              onBuildClick={openBuilder}
               onBack={goHome}
             />
           </RevealOnView>
