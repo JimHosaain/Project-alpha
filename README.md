@@ -7,7 +7,7 @@ Smart PC Builder demo for the `main` branch.
 The app has two parts for local development:
 
 - Frontend: Vite + React
-- Backend: Express + SQLite
+- Backend: Express + MySQL
 
 The backend seeds a realistic demo catalog automatically, so you do not need to import SQL manually for the main flow.
 
