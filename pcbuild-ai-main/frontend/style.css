@@ -1,0 +1,13 @@
+body{
+    font-family: Arial;
+    background: #111;
+    color: white;
+    padding: 30px;
+}
+
+.user-card{
+    background: #222;
+    padding: 15px;
+    margin-top: 10px;
+    border-radius: 10px;
+}

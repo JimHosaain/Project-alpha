@@ -1,5 +1,7 @@
+import { useEffect, useMemo, useState } from 'react'
 import MotionFooter from './ui/motion-footer'
 import { ChevronDown, PlusIcon } from 'lucide-react'
+import { listBuilds } from '../api'
 
 const buildStats = [
   { value: '50,000+', label: 'Builds Created' },
@@ -105,7 +107,44 @@ const latestPosts = [
   },
 ]
 
+const moneyFormatter = new Intl.NumberFormat('en-US')
+
+function formatMoney(value) {
+  return `৳${moneyFormatter.format(value)}`
+}
+
 function HomeShowcaseSections({ onBenchmarkCompare }) {
+  const [importedBuilds, setImportedBuilds] = useState([])
+  const [buildsState, setBuildsState] = useState('loading')
+  const [visibleBuildCount, setVisibleBuildCount] = useState(4)
+
+  useEffect(() => {
+    let isActive = true
+
+    listBuilds()
+      .then((rows) => {
+        if (!isActive) return
+        setImportedBuilds(rows)
+        setBuildsState('ready')
+      })
+      .catch(() => {
+        if (!isActive) return
+        setImportedBuilds([])
+        setBuildsState('error')
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [])
+
+  const visibleImportedBuilds = useMemo(
+    () => importedBuilds.slice(0, visibleBuildCount),
+    [importedBuilds, visibleBuildCount]
+  )
+
+  const canShowMore = visibleBuildCount < importedBuilds.length
+
   return (
     <div className="home-showcase">
       <section className="home-stats">
@@ -189,6 +228,90 @@ function HomeShowcaseSections({ onBenchmarkCompare }) {
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="home-section imported-builds-section">
+        <div className="home-section-head between">
+          <div>
+            <p className="eyebrow">Database import</p>
+            <h2>Builds loaded from project_alpha.sql</h2>
+            <p>
+              These are the saved build rows now flowing from the backend into the frontend.
+            </p>
+          </div>
+          <span className="imported-builds-pill">
+            {buildsState === 'loading'
+              ? 'Loading builds...'
+              : buildsState === 'error'
+                ? 'API unavailable'
+                : `${importedBuilds.length} imported`}
+          </span>
+        </div>
+
+        <div className="build-grid imported-builds-grid">
+          {buildsState === 'loading' ? (
+            <article className="build-card imported-build-card imported-build-card-placeholder">
+              <p className="build-tag">Syncing data</p>
+              <h3>Pulling saved builds from the server</h3>
+              <p>This section will show the imported rows as soon as the API responds.</p>
+            </article>
+          ) : visibleImportedBuilds.length > 0 ? (
+            visibleImportedBuilds.map((build, index) => {
+              const components = Array.isArray(build.components) ? build.components : []
+              const buildTitle = build.name || `Build #${build.id}`
+
+              return (
+                <article className="build-card imported-build-card" key={`${build.id}-${buildTitle}`}>
+                  <div className="build-card-top">
+                    <div>
+                      <p className="build-tag">Imported #{index + 1}</p>
+                      <h3>{buildTitle}</h3>
+                    </div>
+                    <span className="build-price">{formatMoney(build.total_price)}</span>
+                  </div>
+
+                  <ul className="spec-list imported-build-specs">
+                    <li>{components.length || 'No'} component entries</li>
+                    <li>{build.total_watt ?? build.wattage ?? 0}W estimated draw</li>
+                    <li>Created {build.created_at ? new Date(build.created_at).toLocaleDateString() : 'recently'}</li>
+                  </ul>
+
+                  <p className="imported-build-note">
+                    {components.length > 0
+                      ? components.map((item) => item?.label).filter(Boolean).slice(0, 4).join(' · ')
+                      : 'Imported from the SQL seed and ready for your frontend.'}
+                  </p>
+                </article>
+              )
+            })
+          ) : (
+            <article className="build-card imported-build-card imported-build-card-placeholder">
+              <p className="build-tag">No imported builds</p>
+              <h3>Backend connected, but no seed rows were returned.</h3>
+              <p>Check the server or database import if you expected project_alpha rows here.</p>
+            </article>
+          )}
+        </div>
+
+        {buildsState === 'ready' && importedBuilds.length > 0 ? (
+          <div className="imported-builds-actions">
+            <p className="imported-builds-meta">
+              Showing {visibleImportedBuilds.length} of {importedBuilds.length} imported builds
+            </p>
+
+            <button
+              type="button"
+              className="build-btn imported-builds-btn"
+              onClick={() => {
+                setVisibleBuildCount((current) =>
+                  canShowMore ? Math.min(current + 4, importedBuilds.length) : 4
+                )
+              }}
+            >
+              {canShowMore ? 'Show more builds' : 'Show fewer builds'}
+            </button>
+          </div>
+        ) : null}
       </section>
 
       <section className="home-section faq-section">

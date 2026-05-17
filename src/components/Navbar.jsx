@@ -8,6 +8,7 @@ function Navbar({
   onChatbotClick,
   onHomeClick,
   onBuildClick,
+  onPartsClick,
   activeView = 'home',
 }) {
   return (
@@ -25,6 +26,7 @@ function Navbar({
         <ul className="nav-links">
           <li className={activeView === 'home' ? 'is-active' : ''} onClick={onHomeClick}>Home</li>
           <li className={activeView === 'builder' || activeView === 'manualBuilder' ? 'is-active' : ''} onClick={onBuildClick}>Builds</li>
+          <li className={activeView === 'partsAdmin' ? 'is-active' : ''} onClick={onPartsClick}>Parts</li>
           <li className={activeView === 'signup' ? 'is-active' : ''} onClick={onLoginClick}>Account</li>
           <li>Forrum</li>
           <li>News</li>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <title>Signup</title>
+
+    <style>
+
+        body{
+            background:#111;
+            color:white;
+            font-family:Arial;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            height:100vh;
+        }
+
+        .box{
+            background:#222;
+            padding:30px;
+            border-radius:10px;
+            width:300px;
+        }
+
+        input{
+            width:100%;
+            padding:10px;
+            margin-top:10px;
+        }
+
+        button{
+            width:100%;
+            padding:10px;
+            margin-top:15px;
+            background:limegreen;
+            border:none;
+            color:white;
+            cursor:pointer;
+        }
+
+    </style>
+
+</head>
+<body>
+
+    <div class="box">
+
+        <h2>Create Account</h2>
+
+        <input type="text" id="user_name" placeholder="Username">
+
+        <input type="email" id="email" placeholder="Email">
+
+        <input type="password" id="password" placeholder="Password">
+
+        <input type="text" id="preferences" placeholder="Preferences">
+
+        <button onclick="signup()">Signup</button>
+
+    </div>
+
+    <script>
+
+        const API_BASE = 'http://localhost:5000'
+
+        async function signup(){
+
+            const user_name = document.getElementById("user_name").value;
+
+            const email = document.getElementById("email").value;
+
+            const password = document.getElementById("password").value;
+
+            const preferences = document.getElementById("preferences").value;
+
+            const response = await fetch(
+                `${API_BASE}/auth/signup`,
+                {
+                    method:"POST",
+
+                    headers:{
+                        "Content-Type":"application/json"
+                    },
+
+                    body: JSON.stringify({
+                        user_name,
+                        email,
+                        password,
+                        preferences
+                    })
+                }
+            );
+
+            const data = await response.json();
+
+            alert(data.message);
+
+            window.location.href = "login.html";
+
+        }
+
+    </script>
+
+</body>
+</html>
