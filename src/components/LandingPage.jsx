@@ -6,6 +6,7 @@ import SignUpPage from './SignUpPage'
 import ChatbotPanel from './ChatbotPanel'
 import BuildFlowStep from './BuildFlowStep'
 import ManualBuilderPage from './ManualBuilderPage'
+import PartsAdminPage from './PartsAdminPage'
 import HomeShowcaseSections from './HomeShowcaseSections'
 import RevealOnView from './ui/RevealOnView'
 import NotFoundPage from './ui/NotFoundPage'
@@ -15,6 +16,7 @@ const viewByPath = {
   '/': 'home',
   '/builder': 'builder',
   '/manual-builder': 'manualBuilder',
+  '/parts': 'partsAdmin',
   '/signup': 'signup',
 }
 
@@ -76,6 +78,7 @@ function LandingPage() {
   const [manualBuildContext, setManualBuildContext] = useState({
     presetId: 'manual',
     budget: 85000,
+    build: null,
   })
   const [isChatbotOpen, setIsChatbotOpen] = useState(false)
   const { stopLoading } = useLoading()
@@ -108,10 +111,15 @@ function LandingPage() {
     setView('builder')
   }
 
-  const openManualBuilder = ({ presetId = 'manual', budget = 85000 } = {}) => {
-    setManualBuildContext({ presetId, budget })
+  const openManualBuilder = ({ presetId = 'manual', budget = 85000, build = null } = {}) => {
+    setManualBuildContext({ presetId, budget, build })
     window.history.pushState({}, '', toAppHref('/manual-builder'))
     setView('manualBuilder')
+  }
+
+  const openPartsAdmin = () => {
+    window.history.pushState({}, '', toAppHref('/parts'))
+    setView('partsAdmin')
   }
 
   const goHome = () => {
@@ -140,19 +148,20 @@ function LandingPage() {
             onChatbotClick={openChatbot}
             onHomeClick={goHome}
             onBuildClick={openBuilder}
+            onPartsClick={openPartsAdmin}
             activeView={view}
           />
         </RevealOnView>
 
         {view === 'home' ? (
           <>
-            <RevealOnView delay={0.02} variant="hero">
+            <RevealOnView variant="hero">
               <HeroSection theme={theme} onBuildClick={openBuilder} />
             </RevealOnView>
-            <RevealOnView delay={0.04} variant="soft">
+            <RevealOnView variant="soft">
               <StackMarquee />
             </RevealOnView>
-            <RevealOnView delay={0.06} variant="lift">
+            <RevealOnView variant="lift">
               <HomeShowcaseSections onBenchmarkCompare={openBuilder} />
             </RevealOnView>
           </>
@@ -166,7 +175,12 @@ function LandingPage() {
               onBack={openBuilder}
               presetId={manualBuildContext.presetId}
               budget={manualBuildContext.budget}
+              presetBuild={manualBuildContext.build}
             />
+          </RevealOnView>
+        ) : view === 'partsAdmin' ? (
+          <RevealOnView>
+            <PartsAdminPage onBack={goHome} />
           </RevealOnView>
         ) : view === 'signup' ? (
           <RevealOnView>

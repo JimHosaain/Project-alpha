@@ -5,4 +5,10 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   base: '/Project-alpha/',
   plugins: [react()],
+  server: {
+    proxy: {
+      '/api': 'http://localhost:4000',
+      '/smart': 'http://localhost:4000',
+    },
+  },
 })

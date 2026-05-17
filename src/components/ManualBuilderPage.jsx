@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { listParts, saveBuild } from '../api'
 
-const componentOptions = {
+const defaultComponentOptions = {
   cpu: [
     { label: 'Ryzen 7 7700X', price: 31500, watt: 105 },
     { label: 'Core i7-13700F', price: 33800, watt: 125 },
@@ -46,6 +47,64 @@ const componentRows = [
   { key: 'cooling', label: 'Cooling', note: 'Maintains stable thermals under load' },
 ]
 
+function normalizeCategory(category) {
+  const value = String(category || '').trim().toLowerCase()
+  if (value.includes('motherboard')) return 'motherboard'
+  if (value.includes('gpu')) return 'gpu'
+  if (value.includes('cpu')) return 'cpu'
+  if (value.includes('ram')) return 'ram'
+  if (value.includes('storage')) return 'storage'
+  if (value.includes('psu')) return 'psu'
+  if (value.includes('case')) return 'case'
+  if (value.includes('cool')) return 'cooling'
+  return value
+}
+
+function partToOption(part) {
+  const specs = part.specs && typeof part.specs === 'object' ? part.specs : {}
+  const option = {
+    label: part.part_name,
+    price: Number(part.price) || 0,
+    watt: Number(part.watt) || 0,
+  }
+
+  if (specs.capacity != null) {
+    option.capacity = Number(specs.capacity) || 0
+  }
+
+  return option
+}
+
+function buildCatalog(parts) {
+  const grouped = parts.reduce((acc, part) => {
+    const key = normalizeCategory(part.category)
+    if (!acc[key]) acc[key] = []
+    acc[key].push(partToOption(part))
+    return acc
+  }, {})
+
+  return Object.keys(defaultComponentOptions).reduce((acc, key) => {
+    acc[key] = grouped[key]?.length ? grouped[key] : defaultComponentOptions[key]
+    return acc
+  }, {})
+}
+
+function findOptionIndex(options, targetPart) {
+  if (!Array.isArray(options) || options.length === 0 || !targetPart) return 0
+  const targetLabel = String(targetPart.part_name || targetPart.model || targetPart.label || '').toLowerCase()
+  const targetBrand = String(targetPart.brand || '').toLowerCase()
+
+  const exactMatch = options.findIndex((option) => {
+    const optionLabel = String(option.label || '').toLowerCase()
+    return optionLabel === targetLabel || optionLabel.includes(targetLabel) || targetLabel.includes(optionLabel)
+  })
+
+  if (exactMatch >= 0) return exactMatch
+
+  const brandMatch = options.findIndex((option) => String(option.label || '').toLowerCase().includes(targetBrand))
+  return brandMatch >= 0 ? brandMatch : 0
+}
+
 const formatMoney = new Intl.NumberFormat('en-US')
 
 function toMoney(value) {
@@ -59,7 +118,9 @@ function getPresetLabel(presetId) {
   return 'Manual'
 }
 
-function ManualBuilderPage({ onBack, presetId = 'manual', budget = 85000 }) {
+function ManualBuilderPage({ onBack, presetId = 'manual', budget = 85000, presetBuild = null }) {
+  const [catalog, setCatalog] = useState(defaultComponentOptions)
+  const [catalogState, setCatalogState] = useState('loading')
   const [selectedIndex, setSelectedIndex] = useState({
     cpu: 0,
     gpu: presetId === 'swift-core' ? 1 : 0,
@@ -71,13 +132,33 @@ function ManualBuilderPage({ onBack, presetId = 'manual', budget = 85000 }) {
     cooling: 0,
   })
 
+  useEffect(() => {
+    let active = true
+
+    listParts()
+      .then((rows) => {
+        if (!active) return
+        setCatalog(buildCatalog(rows))
+        setCatalogState('ready')
+      })
+      .catch(() => {
+        if (!active) return
+        setCatalog(defaultComponentOptions)
+        setCatalogState('fallback')
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
   const selections = useMemo(() => {
     return componentRows.map((row) => {
-      const list = componentOptions[row.key]
-      const current = list[selectedIndex[row.key]]
+      const list = catalog[row.key] || defaultComponentOptions[row.key]
+      const current = list[selectedIndex[row.key] % list.length]
       return { ...row, current }
     })
-  }, [selectedIndex])
+  }, [catalog, selectedIndex])
 
   const totalPrice = useMemo(
     () => selections.reduce((sum, item) => sum + item.current.price, 0),
@@ -93,12 +174,59 @@ function ManualBuilderPage({ onBack, presetId = 'manual', budget = 85000 }) {
   const psuCapacity = psuSelection?.capacity ?? 750
   const compatible = psuCapacity >= Math.round(totalWatt * 1.35)
 
+  const [saving, setSaving] = useState(false)
+  const [savedId, setSavedId] = useState(null)
+  const [presetApplied, setPresetApplied] = useState(false)
+
+  useEffect(() => {
+    setPresetApplied(false)
+  }, [presetBuild, presetId])
+
   const cycleOption = (key) => {
-    const options = componentOptions[key]
+    const options = catalog[key] || defaultComponentOptions[key]
     setSelectedIndex((current) => ({
       ...current,
       [key]: (current[key] + 1) % options.length,
     }))
+  }
+
+  useEffect(() => {
+    if (catalogState !== 'ready' || !presetBuild || presetApplied) {
+      return
+    }
+
+    const nextSelectedIndex = { ...selectedIndex }
+    nextSelectedIndex.cpu = findOptionIndex(catalog.cpu || [], presetBuild.cpu)
+    nextSelectedIndex.gpu = findOptionIndex(catalog.gpu || [], presetBuild.gpu)
+    nextSelectedIndex.motherboard = findOptionIndex(catalog.motherboard || [], presetBuild.motherboard)
+    nextSelectedIndex.ram = findOptionIndex(catalog.ram || [], presetBuild.ram)
+    nextSelectedIndex.storage = findOptionIndex(catalog.storage || [], presetBuild.storage)
+    nextSelectedIndex.psu = findOptionIndex(catalog.psu || [], presetBuild.psu)
+    nextSelectedIndex.case = findOptionIndex(catalog.case || [], presetBuild.case)
+    nextSelectedIndex.cooling = findOptionIndex(catalog.cooling || [], presetBuild.cooler)
+
+    setSelectedIndex(nextSelectedIndex)
+    setPresetApplied(true)
+  }, [catalog, catalogState, presetApplied, presetBuild, selectedIndex])
+
+  const handleSave = async () => {
+    setSaving(true)
+    setSavedId(null)
+    try {
+      const build = {
+        name: getPresetLabel(presetId),
+        components: selections.map((s) => ({ key: s.key, label: s.current.label, price: s.current.price })),
+        total_price: totalPrice,
+        total_watt: totalWatt,
+      }
+      const res = await saveBuild(build)
+      setSavedId(res.id)
+    } catch (err) {
+      console.error('Save failed', err)
+      alert('Failed to save build: ' + (err.message || err))
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -109,6 +237,14 @@ function ManualBuilderPage({ onBack, presetId = 'manual', budget = 85000 }) {
           <h2>Choose and tune your components.</h2>
           <p>
             Preset: {getPresetLabel(presetId)} · Budget target: {toMoney(budget)}
+          </p>
+          {presetBuild ? (
+            <p className="manual-source-note">Loaded from the guided recommendation flow.</p>
+          ) : null}
+          <p className="manual-source-note">
+            {catalogState === 'ready'
+              ? 'Component options are loaded from the database.'
+              : 'Database parts are unavailable right now, so the built-in catalog is active.'}
           </p>
         </div>
         <button type="button" className="builder-back-btn" onClick={onBack}>
@@ -159,8 +295,13 @@ function ManualBuilderPage({ onBack, presetId = 'manual', budget = 85000 }) {
             </strong>
           </div>
 
-          <button type="button" className="builder-next-btn manual-final-btn">
-            Save this build
+          <button
+            type="button"
+            className="builder-next-btn manual-final-btn"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? 'Saving…' : savedId ? 'Saved ✓' : 'Save this build'}
           </button>
         </aside>
       </div>

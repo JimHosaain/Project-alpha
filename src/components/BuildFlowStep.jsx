@@ -1,5 +1,6 @@
 import { ArrowLeft, ArrowRight, Briefcase, Gamepad2, LayoutPanelTop, Check, Sparkles } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { getSmartRecommendations } from '../api'
 
 const useCaseOptions = [
   {
@@ -24,7 +25,7 @@ const useCaseOptions = [
 
 const budgetPresets = [45000, 65000, 85000, 120000]
 
-const buildCards = [
+const fallbackBuildCards = [
   {
     id: 'elite-alpha',
     title: 'Elite Alpha',
@@ -34,6 +35,16 @@ const buildCards = [
     badge: 'Best Value',
     tone: 'performance',
     specs: ['RTX 4070 Super', 'Ryzen 5 7600X', '32GB DDR5', '1TB NVMe'],
+    components: [
+      { label: 'CPU', value: 'Ryzen 5 7600X' },
+      { label: 'GPU', value: 'RTX 4070 Super' },
+      { label: 'RAM', value: '32GB DDR5' },
+      { label: 'Storage', value: '1TB NVMe' },
+      { label: 'PSU', value: '750W Gold' },
+    ],
+    compatibilityStatus: 'Compatible',
+    compatibilityMessages: ['Compatible', 'Socket matched', 'GPU fits case', 'PSU wattage sufficient'],
+    availableStore: 'Star Tech, Dhaka',
   },
   {
     id: 'nexus-stream',
@@ -44,6 +55,16 @@ const buildCards = [
     badge: 'Recommended',
     tone: 'balanced',
     specs: ['RX 7800 XT', 'Ryzen 7 7700X', '32GB DDR5', '1TB NVMe'],
+    components: [
+      { label: 'CPU', value: 'Ryzen 7 7700X' },
+      { label: 'GPU', value: 'RX 7800 XT' },
+      { label: 'RAM', value: '32GB DDR5' },
+      { label: 'Storage', value: '1TB NVMe' },
+      { label: 'PSU', value: '850W Gold' },
+    ],
+    compatibilityStatus: 'Compatible',
+    compatibilityMessages: ['Compatible', 'Socket matched', 'GPU fits case', 'PSU wattage sufficient'],
+    availableStore: 'Ryans, Dhaka',
   },
   {
     id: 'swift-core',
@@ -54,6 +75,16 @@ const buildCards = [
     badge: 'Value',
     tone: 'value',
     specs: ['RX 7600', 'Core i5-12400F', '16GB DDR4', '500GB SSD'],
+    components: [
+      { label: 'CPU', value: 'Core i5-12400F' },
+      { label: 'GPU', value: 'RX 7600' },
+      { label: 'RAM', value: '16GB DDR4' },
+      { label: 'Storage', value: '500GB SSD' },
+      { label: 'PSU', value: '650W Gold' },
+    ],
+    compatibilityStatus: 'Compatible',
+    compatibilityMessages: ['Compatible', 'Socket matched', 'GPU fits case', 'PSU wattage sufficient'],
+    availableStore: 'TechLand, Chattogram',
   },
 ]
 
@@ -78,6 +109,9 @@ function BuildFlowStep({ onBack, onOpenManualBuilder }) {
   const [isModalClosing, setIsModalClosing] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const [selectedBuild, setSelectedBuild] = useState('nexus-stream')
+  const [buildCards, setBuildCards] = useState(fallbackBuildCards)
+  const [comparisonRows, setComparisonRows] = useState([])
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false)
 
   const recommendedBuildId = useMemo(
     () => getRecommendedBuildId(selectedUseCase, budget),
@@ -99,6 +133,73 @@ function BuildFlowStep({ onBack, onOpenManualBuilder }) {
 
     return () => window.clearTimeout(closeTimer)
   }, [isModalClosing])
+
+  useEffect(() => {
+    let active = true
+    setIsLoadingRecommendations(true)
+
+    getSmartRecommendations({
+      budget,
+      use_case: selectedUseCase || 'workstation',
+      preferred_brand: '',
+      storage_preference: 'NVMe',
+    })
+      .then((data) => {
+        if (!active) return
+        const mapped = (data.recommendations || data.top_three || [])
+          .map((item, index) => {
+            const build = item.build || item
+            if (!build) return null
+            const label = item.label || ['Performance Build', 'Balanced Build', 'Value Build'][index] || `Build ${index + 1}`
+            const availableStore = build.available_store
+              ? `${build.available_store.store_name}${build.available_store.store_location ? `, ${build.available_store.store_location}` : ''}`
+              : 'Demo store network'
+            return {
+              id: build.id || build.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || `smart-${index + 1}`,
+              title: label,
+              purpose: build.name || item.label,
+              score: Number(build.performance_score || build.score || 0),
+              price: build.total_price || 0,
+              badge: index === 0 ? 'Performance' : index === 1 ? 'Balanced' : 'Value',
+              tone: index === 0 ? 'performance' : index === 1 ? 'balanced' : 'value',
+              specs: [build.cpu?.part_name || build.cpu?.model, build.gpu?.part_name || build.gpu?.model, build.ram?.part_name || build.ram?.model, build.storage?.part_name || build.storage?.model].filter(Boolean),
+              components: [
+                { label: 'CPU', value: build.cpu?.part_name || build.cpu?.model },
+                { label: 'GPU', value: build.gpu?.part_name || build.gpu?.model },
+                { label: 'RAM', value: build.ram?.part_name || build.ram?.model },
+                { label: 'Storage', value: build.storage?.part_name || build.storage?.model },
+                { label: 'PSU', value: build.psu?.part_name || build.psu?.model },
+              ].filter((entry) => entry.value),
+              compatibilityStatus: build.compatibility_status || 'Compatible',
+              compatibilityMessages: build.compatibility_messages || ['Compatible', 'Socket matched', 'GPU fits case', 'PSU wattage sufficient'],
+              availableStore,
+            }
+          })
+          .filter(Boolean)
+
+        if (mapped.length) {
+          setBuildCards(mapped)
+          setSelectedBuild(mapped[0].id)
+          setComparisonRows(data.comparison || mapped)
+        } else {
+          setBuildCards(fallbackBuildCards)
+          setComparisonRows(fallbackBuildCards)
+        }
+      })
+      .catch(() => {
+        if (!active) return
+        setBuildCards(fallbackBuildCards)
+        setComparisonRows(fallbackBuildCards)
+      })
+      .finally(() => {
+        if (!active) return
+        setIsLoadingRecommendations(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [budget, selectedUseCase])
 
   const budgetPercent = useMemo(() => {
     const min = 35000
@@ -140,7 +241,8 @@ function BuildFlowStep({ onBack, onOpenManualBuilder }) {
   const handleStartWithBuild = (buildId) => {
     setSelectedBuild(buildId)
     if (onOpenManualBuilder) {
-      onOpenManualBuilder({ presetId: buildId, budget, useCase: activeUseCase })
+      const build = buildCards.find((item) => item.id === buildId)
+      onOpenManualBuilder({ presetId: buildId, budget, useCase: activeUseCase, build })
     }
   }
 
@@ -151,6 +253,7 @@ function BuildFlowStep({ onBack, onOpenManualBuilder }) {
   }
 
   const activeUseCase = selectedUseCase ?? 'workstation'
+  const selectedBuildCard = buildCards.find((build) => build.id === selectedBuild) || buildCards[0]
 
   return (
     <section className="builder-page">
@@ -168,14 +271,25 @@ function BuildFlowStep({ onBack, onOpenManualBuilder }) {
         </div>
 
         <div className="builder-results-grid">
+          {isLoadingRecommendations ? (
+            <article className="builder-result-card">
+              <div className="builder-result-copy">
+                <h3>Loading recommendations...</h3>
+                <p>Optimizing your top builds from the smart catalog.</p>
+              </div>
+            </article>
+          ) : null}
           {buildCards.map((build) => {
-            const isRecommended = build.id === recommendedBuildId
+            const isRecommended = build.id === recommendedBuildId || build.id === buildCards[0]?.id
             const isSelected = selectedBuild === build.id
 
             return (
               <article
                 key={build.id}
                 className={`builder-result-card ${isRecommended ? 'is-recommended' : ''} ${isSelected ? 'is-selected' : ''}`}
+                onClick={() => setSelectedBuild(build.id)}
+                role="button"
+                tabIndex={0}
               >
                 <div className={`builder-result-visual ${build.tone}`}>
                   <span>{isRecommended ? 'Recommended' : build.badge}</span>
@@ -189,13 +303,27 @@ function BuildFlowStep({ onBack, onOpenManualBuilder }) {
                 <div className="builder-result-copy">
                   <h3>{build.title}</h3>
                   <p>{build.purpose}</p>
+                  <p className="builder-result-store">{build.availableStore}</p>
                 </div>
 
-                <ul className="builder-result-specs">
-                  {build.specs.map((spec) => (
-                    <li key={spec}>{spec}</li>
+                <ul className="builder-result-specs builder-result-components">
+                  {build.components.map((component) => (
+                    <li key={`${build.id}-${component.label}`}>
+                      <span>{component.label}</span>
+                      <strong>{component.value}</strong>
+                    </li>
                   ))}
                 </ul>
+
+                <div className={`builder-compatibility-pill ${build.compatibilityStatus === 'Compatible' ? 'is-ok' : 'is-risk'}`}>
+                  {build.compatibilityStatus}
+                </div>
+
+                <div className="builder-message-pills">
+                  {build.compatibilityMessages.slice(0, 4).map((message) => (
+                    <span key={`${build.id}-${message}`}>{message}</span>
+                  ))}
+                </div>
 
                 <div className="builder-result-footerline">
                   <span>Score {build.score}</span>
@@ -215,6 +343,31 @@ function BuildFlowStep({ onBack, onOpenManualBuilder }) {
           <button type="button" className="builder-manual-btn" onClick={handleBuildManually}>
             Build Manually
           </button>
+        </div>
+
+        <div className="builder-comparison-panel">
+          <div className="builder-comparison-head">
+            <div>
+              <p className="builder-kicker">Compare builds</p>
+              <h3>{selectedBuildCard?.title || 'Selected build'} vs the full set</h3>
+            </div>
+            <p>Click any card above to inspect it here.</p>
+          </div>
+
+          <div className="builder-comparison-strip">
+            {(comparisonRows.length ? comparisonRows : buildCards).map((row, index) => {
+              const build = row.build || row
+              return (
+                <article key={build.id || row.label || index} className={`builder-comparison-chip ${selectedBuildCard?.id === build.id ? 'is-active' : ''}`}>
+                  <strong>{row.label || build.title || `Build ${index + 1}`}</strong>
+                  <span>{formatMoney(build.total_price || build.price || 0)}</span>
+                  <span>{build.performance_score || build.score || 0} score</span>
+                  <span>{build.compatibility_status || 'Compatible'}</span>
+                  <span>{build.available_store?.store_name || build.availableStore || 'Demo store network'}</span>
+                </article>
+              )
+            })}
+          </div>
         </div>
       </div>
 
