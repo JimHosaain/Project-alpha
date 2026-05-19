@@ -9,6 +9,7 @@ function Navbar({
   onHomeClick,
   onBuildClick,
   onPartsClick,
+  onMyBuildsClick,
   activeView = 'home',
 }) {
   return (
@@ -28,6 +29,7 @@ function Navbar({
           <li className={activeView === 'builder' || activeView === 'manualBuilder' ? 'is-active' : ''} onClick={onBuildClick}>Builds</li>
           <li className={activeView === 'partsAdmin' ? 'is-active' : ''} onClick={onPartsClick}>Parts</li>
           <li className={activeView === 'signup' ? 'is-active' : ''} onClick={onLoginClick}>Account</li>
+          <li className={activeView === 'myBuilds' ? 'is-active' : ''} onClick={onMyBuildsClick}>My Builds</li>
           <li>Forrum</li>
           <li>News</li>
         </ul>

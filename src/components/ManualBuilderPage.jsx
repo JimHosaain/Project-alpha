@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { listParts, saveBuild } from '../api'
+import { listParts, saveBuild, runCompatibilityCheck } from '../api'
 
 const defaultComponentOptions = {
   cpu: [
@@ -63,9 +63,11 @@ function normalizeCategory(category) {
 function partToOption(part) {
   const specs = part.specs && typeof part.specs === 'object' ? part.specs : {}
   const option = {
-    label: part.part_name,
+    label: part.part_name || part.model || '',
     price: Number(part.price) || 0,
-    watt: Number(part.watt) || 0,
+    watt: Number(part.watt) || Number(part.wattage) || 0,
+    part_id: part.part_id || part.id || null,
+    raw: part,
   }
 
   if (specs.capacity != null) {
@@ -73,6 +75,82 @@ function partToOption(part) {
   }
 
   return option
+}
+
+function getSpecValue(item, key) {
+  const raw = item?.raw || {}
+  const specs = raw.specs && typeof raw.specs === 'object' ? raw.specs : {}
+  return raw[key] ?? specs[key] ?? item?.[key] ?? null
+}
+
+function getItemImage(item) {
+  const raw = item?.raw || {}
+  return raw.image_url || raw.image || raw.thumbnail || null
+}
+
+function getPerformanceTier(score = 0) {
+  if (score >= 25000) return 'Elite'
+  if (score >= 16000) return 'High'
+  if (score >= 9000) return 'Balanced'
+  return 'Entry'
+}
+
+function getRowCompatibility(rowKey, selections) {
+  const cpu = selections.find((item) => item.key === 'cpu')?.current?.raw || null
+  const motherboard = selections.find((item) => item.key === 'motherboard')?.current?.raw || null
+  const ram = selections.find((item) => item.key === 'ram')?.current?.raw || null
+  const gpu = selections.find((item) => item.key === 'gpu')?.current?.raw || null
+  const psu = selections.find((item) => item.key === 'psu')?.current || null
+  const caseItem = selections.find((item) => item.key === 'case')?.current?.raw || null
+  const cooler = selections.find((item) => item.key === 'cooling')?.current?.raw || null
+
+  if (rowKey === 'motherboard' && cpu && motherboard) {
+    return String(cpu.socket || '').toLowerCase() === String(motherboard.socket || '').toLowerCase()
+      ? { tone: 'good', text: '✓ Compatible with selected CPU' }
+      : { tone: 'warn', text: '⚠ Socket mismatch' }
+  }
+
+  if (rowKey === 'ram' && motherboard && ram) {
+    return String(motherboard.ram_type || '').toLowerCase() === String(ram.ram_type || '').toLowerCase()
+      ? { tone: 'good', text: `✓ ${String(ram.ram_type || '').toUpperCase()} supported` }
+      : { tone: 'bad', text: '✕ RAM type mismatch' }
+  }
+
+  if (rowKey === 'psu' && psu) {
+    const wattage = Number(psu.capacity || psu.wattage || psu.watt || 0)
+    return wattage >= Math.round((selections.reduce((sum, item) => sum + Number(item.current?.watt || 0), 0) * 1.35))
+      ? { tone: 'good', text: '✓ Recommended wattage available' }
+      : { tone: 'warn', text: '⚠ Insufficient wattage' }
+  }
+
+  if (rowKey === 'case' && gpu && caseItem) {
+    return Number(caseItem.supported_gpu_length_mm || 0) >= Number(gpu.gpu_length_mm || 0)
+      ? { tone: 'good', text: '✓ GPU fits case' }
+      : { tone: 'bad', text: '✕ GPU too large' }
+  }
+
+  if (rowKey === 'cooling' && cpu && cooler) {
+    const supported = String(cooler.socket_support || '')
+      .split(',')
+      .map((part) => part.trim().toLowerCase())
+    return supported.includes(String(cpu.socket || '').toLowerCase())
+      ? { tone: 'good', text: '✓ Socket compatible' }
+      : { tone: 'bad', text: '✕ Socket incompatible' }
+  }
+
+  if (rowKey === 'cpu' && cpu) {
+    return { tone: 'good', text: '✓ Selected CPU' }
+  }
+
+  if (rowKey === 'gpu' && gpu) {
+    return { tone: 'good', text: '✓ Selected GPU' }
+  }
+
+  if (rowKey === 'storage' && getSpecValue({ raw: selections.find((item) => item.key === 'storage')?.current?.raw }, 'storage_type')) {
+    return { tone: 'good', text: '✓ Storage ready' }
+  }
+
+  return { tone: 'neutral', text: 'Ready to choose' }
 }
 
 function buildCatalog(parts) {
@@ -118,7 +196,22 @@ function getPresetLabel(presetId) {
   return 'Manual'
 }
 
-function ManualBuilderPage({ onBack, presetId = 'manual', budget = 85000, presetBuild = null }) {
+function getRowIconLabel(rowKey) {
+  const labels = {
+    cpu: 'CPU',
+    gpu: 'GPU',
+    motherboard: 'MB',
+    ram: 'RAM',
+    storage: 'SSD',
+    psu: 'PSU',
+    case: 'CASE',
+    cooling: 'CLR',
+  }
+
+  return labels[rowKey] || String(rowKey || '').slice(0, 3).toUpperCase()
+}
+
+function ManualBuilderPage({ onBack, presetId = 'manual', budget = 85000, presetBuild = null, requestOpenSelector = null }) {
   const [catalog, setCatalog] = useState(defaultComponentOptions)
   const [catalogState, setCatalogState] = useState('loading')
   const [selectedIndex, setSelectedIndex] = useState({
@@ -160,6 +253,31 @@ function ManualBuilderPage({ onBack, presetId = 'manual', budget = 85000, preset
     })
   }, [catalog, selectedIndex])
 
+  const [compatibility, setCompatibility] = useState({ compatible: true, issues: [] })
+
+  useEffect(() => {
+    // run compatibility check on selection changes
+    async function check() {
+      try {
+        const payload = {}
+        selections.forEach((s) => {
+          if (!s.current) return
+          // include raw objects when available
+          if (s.current.raw) payload[s.key] = s.current.raw
+          else payload[s.key] = { label: s.current.label }
+        })
+
+        const res = await runCompatibilityCheck(payload)
+        setCompatibility({ compatible: !!res.compatible, issues: res.issues || [] })
+      } catch (err) {
+        // keep previous compatibility state on error
+        console.warn('compatibility check failed', err)
+      }
+    }
+
+    check()
+  }, [selections])
+
   const totalPrice = useMemo(
     () => selections.reduce((sum, item) => sum + item.current.price, 0),
     [selections]
@@ -172,7 +290,7 @@ function ManualBuilderPage({ onBack, presetId = 'manual', budget = 85000, preset
 
   const psuSelection = selections.find((item) => item.key === 'psu')?.current
   const psuCapacity = psuSelection?.capacity ?? 750
-  const compatible = psuCapacity >= Math.round(totalWatt * 1.35)
+  const performanceTier = getPerformanceTier(selections.reduce((sum, item) => sum + Number(item.current?.price || 0), 0) + totalWatt * 20)
 
   const [saving, setSaving] = useState(false)
   const [savedId, setSavedId] = useState(null)
@@ -182,12 +300,27 @@ function ManualBuilderPage({ onBack, presetId = 'manual', budget = 85000, preset
     setPresetApplied(false)
   }, [presetBuild, presetId])
 
-  const cycleOption = (key) => {
-    const options = catalog[key] || defaultComponentOptions[key]
-    setSelectedIndex((current) => ({
-      ...current,
-      [key]: (current[key] + 1) % options.length,
-    }))
+  const openSelectorFor = (key) => {
+    if (typeof requestOpenSelector !== 'function') return
+
+    // build a snapshot of current selections with optional ids/labels
+    const currentSelections = {}
+    Object.keys(selectedIndex).forEach((k) => {
+      const opts = catalog[k] || defaultComponentOptions[k]
+      currentSelections[k] = opts[selectedIndex[k] % opts.length] || null
+    })
+    currentSelections.estimatedWatt = totalWatt
+
+    requestOpenSelector(key, {
+      currentSelections,
+      onSelect: (part) => {
+        // when a part is selected from the selector overlay, find matching option index
+        setSelectedIndex((cur) => ({
+          ...cur,
+          [key]: findOptionIndex(catalog[key] || [], part),
+        }))
+      },
+    })
   }
 
   useEffect(() => {
@@ -232,7 +365,7 @@ function ManualBuilderPage({ onBack, presetId = 'manual', budget = 85000, preset
   return (
     <section className="manual-builder-page">
       <div className="manual-builder-head">
-        <div>
+        <div className="manual-builder-copy">
           <p className="manual-kicker">Manual builder</p>
           <h2>Choose and tune your components.</h2>
           <p>
@@ -252,58 +385,126 @@ function ManualBuilderPage({ onBack, presetId = 'manual', budget = 85000, preset
         </button>
       </div>
 
+      <div className="manual-summary-row" aria-label="Build summary">
+        <div className={`manual-summary-chip ${compatibility.compatible ? 'is-good' : 'is-warn'}`}>
+          {compatibility.compatible ? '✓ Compatible Build' : '⚠ Compatibility Issue'}
+        </div>
+        <div className="manual-summary-box">
+          <span>Estimated Wattage</span>
+          <strong>{totalWatt}W</strong>
+        </div>
+        <div className="manual-summary-box">
+          <span>Total Price</span>
+          <strong>{toMoney(totalPrice)}</strong>
+        </div>
+        <div className="manual-summary-box">
+          <span>Selected</span>
+          <strong>{selections.filter((item) => item.current?.label).length}</strong>
+        </div>
+        <div className="manual-summary-box manual-summary-box--wide">
+          <span>Performance Tier</span>
+          <strong>{performanceTier}</strong>
+        </div>
+        <button
+          type="button"
+          className="builder-next-btn manual-final-btn"
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {saving ? 'Saving…' : savedId ? 'Saved ✓' : 'Save this build'}
+        </button>
+      </div>
+
+      {!compatibility.compatible && compatibility.issues && compatibility.issues.length ? (
+        <div className="manual-compat-issues">
+          <ul>
+            {compatibility.issues.map((iss, idx) => (
+              <li key={idx} className="muted small">{iss}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <div className="manual-builder-layout">
         <div className="manual-component-list">
-          {selections.map((item) => (
-            <article className="manual-component-item" key={item.key}>
-              <div className="manual-item-title">
-                <strong>{item.label}</strong>
-                <span>{item.note}</span>
-              </div>
+          {selections.map((item) => {
+            const compatibilityState = getRowCompatibility(item.key, selections)
+            const hasSelection = Boolean(item.current && item.current.label)
+            const img = getItemImage(item.current)
+            const selectedSpecs = [
+              item.key === 'cpu' ? `${getSpecValue(item.current, 'socket') || 'Socket n/a'}` : null,
+              item.key === 'cpu' ? `${getSpecValue(item.current, 'core_count') || getSpecValue(item.current, 'cores') || '—'}C/${getSpecValue(item.current, 'thread_count') || getSpecValue(item.current, 'threads') || '—'}T` : null,
+              item.key === 'cpu' ? `${getSpecValue(item.current, 'generation') || 'Gen n/a'}` : null,
+              item.key === 'motherboard' ? `${getSpecValue(item.current, 'socket') || 'Socket n/a'}` : null,
+              item.key === 'motherboard' ? `${getSpecValue(item.current, 'ram_type') || 'RAM n/a'}` : null,
+              item.key === 'ram' ? `${getSpecValue(item.current, 'ram_type') || 'RAM n/a'}` : null,
+              item.key === 'ram' ? `${getSpecValue(item.current, 'speed') || 'Speed n/a'}` : null,
+              item.key === 'gpu' ? `${getSpecValue(item.current, 'vram') || getSpecValue(item.current, 'memory') || 'VRAM n/a'}` : null,
+              item.key === 'gpu' ? `${getSpecValue(item.current, 'benchmark_score') || 'Bench n/a'}` : null,
+              item.key === 'psu' ? `${getSpecValue(item.current, 'capacity') || psuCapacity}W` : null,
+              item.key === 'psu' ? `${getSpecValue(item.current, 'efficiency') || 'Efficiency n/a'}` : null,
+              item.key === 'case' ? `${getSpecValue(item.current, 'supported_gpu_length_mm') || 'Case fit n/a'}` : null,
+              item.key === 'case' ? `${getSpecValue(item.current, 'supported_form_factor') || getSpecValue(item.current, 'form_factor') || 'Board support n/a'}` : null,
+              item.key === 'cooling' ? `${getSpecValue(item.current, 'socket_support') || 'Socket support n/a'}` : null,
+              item.key === 'storage' ? `${getSpecValue(item.current, 'capacity') || 'Storage'}` : null,
+            ].filter(Boolean)
 
-              <div className="manual-item-selected">
-                <p>{item.current.label}</p>
-                <span>{toMoney(item.current.price)}</span>
-              </div>
+            return (
+              <article
+                className={`manual-row ${hasSelection ? 'is-selected' : ''} ${compatibilityState.tone === 'good' ? 'is-good' : compatibilityState.tone === 'warn' ? 'is-warn' : compatibilityState.tone === 'bad' ? 'is-bad' : ''}`}
+                key={item.key}
+              >
+                <div className="manual-row-left">
+                  <div className="manual-row-icon">{getRowIconLabel(item.key)}</div>
+                  <div className="manual-row-labels">
+                    <strong>{item.label}</strong>
+                    <span>{item.note}</span>
+                  </div>
+                </div>
 
-              <button type="button" className="manual-change-btn" onClick={() => cycleOption(item.key)}>
-                Change
-              </button>
-            </article>
-          ))}
+                <div className="manual-row-center">
+                  {hasSelection ? (
+                    <>
+                      <div className="manual-row-product">
+                        <div className="manual-row-media">
+                          {img ? <img src={img} alt={item.current.label} /> : <div className="manual-row-placeholder" />}
+                        </div>
+                        <div className="manual-row-copy">
+                          <p>{item.current.label}</p>
+                          <span>{item.current.raw?.brand || item.current.label}</span>
+                        </div>
+                      </div>
+
+                      <div className="manual-row-specs">
+                        {selectedSpecs.map((spec) => <span key={spec}>{spec}</span>)}
+                      </div>
+
+                      <div className={`manual-row-badge ${compatibilityState.tone}`}>
+                        {compatibilityState.text}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="manual-row-placeholder-line">
+                      <span />
+                      <span />
+                    </div>
+                  )}
+                </div>
+
+                <div className="manual-row-right">
+                  <strong className="manual-row-price">{hasSelection ? toMoney(item.current.price) : '—'}</strong>
+                  <button
+                    type="button"
+                    className={`manual-change-btn ${hasSelection ? 'is-change' : 'is-choose'}`}
+                    onClick={() => openSelectorFor(item.key)}
+                  >
+                    {hasSelection ? 'Change' : 'Choose'}
+                  </button>
+                </div>
+              </article>
+            )
+          })}
         </div>
-
-        <aside className="manual-summary-panel">
-          <h3>Build summary</h3>
-
-          <div className="manual-summary-line">
-            <span>Total price</span>
-            <strong>{toMoney(totalPrice)}</strong>
-          </div>
-          <div className="manual-summary-line">
-            <span>Estimated wattage</span>
-            <strong>{totalWatt}W</strong>
-          </div>
-          <div className="manual-summary-line">
-            <span>PSU capacity</span>
-            <strong>{psuCapacity}W</strong>
-          </div>
-          <div className="manual-summary-line">
-            <span>Compatibility</span>
-            <strong className={compatible ? 'is-ok' : 'is-risk'}>
-              {compatible ? 'Good' : 'Needs higher PSU'}
-            </strong>
-          </div>
-
-          <button
-            type="button"
-            className="builder-next-btn manual-final-btn"
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saving ? 'Saving…' : savedId ? 'Saved ✓' : 'Save this build'}
-          </button>
-        </aside>
       </div>
     </section>
   )

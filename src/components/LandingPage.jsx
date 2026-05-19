@@ -6,6 +6,8 @@ import SignUpPage from './SignUpPage'
 import ChatbotPanel from './ChatbotPanel'
 import BuildFlowStep from './BuildFlowStep'
 import ManualBuilderPage from './ManualBuilderPage'
+import ComponentSelector from './ComponentSelector'
+import MyBuildsPage from './MyBuildsPage'
 import PartsAdminPage from './PartsAdminPage'
 import HomeShowcaseSections from './HomeShowcaseSections'
 import RevealOnView from './ui/RevealOnView'
@@ -16,57 +18,50 @@ const viewByPath = {
   '/': 'home',
   '/builder': 'builder',
   '/manual-builder': 'manualBuilder',
+  '/my-builds': 'myBuilds',
   '/parts': 'partsAdmin',
   '/signup': 'signup',
 }
 
 function getBasePath() {
-  if (typeof window === 'undefined') {
-    return '/'
-  }
-
+  if (typeof window === 'undefined') return '/'
   const base = import.meta.env.BASE_URL || '/'
   return base.endsWith('/') ? base.slice(0, -1) || '/' : base
 }
 
 function normalizePathname(pathname) {
   const base = getBasePath()
-
   if (base !== '/' && pathname.startsWith(base)) {
     const trimmed = pathname.slice(base.length)
     return trimmed.startsWith('/') ? trimmed : `/${trimmed}`
   }
-
   return pathname
 }
 
 function toAppHref(path) {
   const base = getBasePath()
   const cleanPath = path === '/' ? '' : path
-
-  if (base === '/') {
-    return cleanPath || '/'
-  }
-
-  return `${base}${cleanPath}`
+  return base === '/' ? cleanPath || '/' : `${base}${cleanPath}`
 }
 
-function getInitialView() {
-  if (typeof window === 'undefined') {
-    return 'home'
+function getAppStateFromPath(pathname) {
+  const appPath = normalizePathname(pathname)
+  if (appPath.startsWith('/build/')) {
+    return { view: 'buildStep', selectorStep: appPath.split('/build/')[1] || 'cpu' }
   }
 
-  const appPath = normalizePathname(window.location.pathname)
-  return viewByPath[appPath] ?? 'notFound'
+  return { view: viewByPath[appPath] ?? 'notFound', selectorStep: null }
+}
+
+function getInitialAppState() {
+  if (typeof window === 'undefined') return { view: 'home', selectorStep: null }
+  return getAppStateFromPath(window.location.pathname)
 }
 
 function LandingPage() {
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem('theme')
-    if (savedTheme === 'light' || savedTheme === 'dark') {
-      return savedTheme
-    }
-
+    if (savedTheme === 'light' || savedTheme === 'dark') return savedTheme
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   })
 
@@ -74,13 +69,16 @@ function LandingPage() {
     localStorage.setItem('theme', theme)
   }, [theme])
 
-  const [view, setView] = useState(getInitialView)
+  const initialState = getInitialAppState()
+  const [view, setView] = useState(initialState.view)
+  const [selectorStep, setSelectorStep] = useState(initialState.selectorStep)
   const [manualBuildContext, setManualBuildContext] = useState({
     presetId: 'manual',
     budget: 85000,
     build: null,
   })
   const [isChatbotOpen, setIsChatbotOpen] = useState(false)
+  const [selectorContext, setSelectorContext] = useState(null)
   const { stopLoading } = useLoading()
 
   useEffect(() => {
@@ -89,8 +87,10 @@ function LandingPage() {
 
   useEffect(() => {
     const handlePopState = () => {
-      const appPath = normalizePathname(window.location.pathname)
-      setView(viewByPath[appPath] ?? 'notFound')
+      const state = getAppStateFromPath(window.location.pathname)
+      setView(state.view)
+      setSelectorStep(state.selectorStep)
+      if (state.view !== 'buildStep') setSelectorContext(null)
     }
 
     window.addEventListener('popstate', handlePopState)
@@ -104,35 +104,60 @@ function LandingPage() {
   const openSignUp = () => {
     window.history.pushState({}, '', toAppHref('/signup'))
     setView('signup')
+    setSelectorStep(null)
   }
 
   const openBuilder = () => {
     window.history.pushState({}, '', toAppHref('/builder'))
     setView('builder')
+    setSelectorStep(null)
+    setSelectorContext(null)
   }
 
   const openManualBuilder = ({ presetId = 'manual', budget = 85000, build = null } = {}) => {
     setManualBuildContext({ presetId, budget, build })
     window.history.pushState({}, '', toAppHref('/manual-builder'))
     setView('manualBuilder')
+    setSelectorStep(null)
+    setSelectorContext(null)
   }
 
   const openPartsAdmin = () => {
     window.history.pushState({}, '', toAppHref('/parts'))
     setView('partsAdmin')
+    setSelectorStep(null)
+    setSelectorContext(null)
   }
 
   const goHome = () => {
     window.history.pushState({}, '', toAppHref('/'))
     setView('home')
+    setSelectorStep(null)
+    setSelectorContext(null)
   }
 
-  const openChatbot = () => {
-    setIsChatbotOpen(true)
+  const openChatbot = () => setIsChatbotOpen(true)
+  const closeChatbot = () => setIsChatbotOpen(false)
+
+  const openMyBuilds = () => {
+    window.history.pushState({}, '', toAppHref('/my-builds'))
+    setView('myBuilds')
+    setSelectorStep(null)
+    setSelectorContext(null)
   }
 
-  const closeChatbot = () => {
-    setIsChatbotOpen(false)
+  const requestOpenSelector = (step, { currentSelections = {}, onSelect } = {}) => {
+    setSelectorContext({ step, currentSelections, onSelect })
+    setSelectorStep(step)
+    window.history.pushState({}, '', toAppHref(`/build/${step}`))
+    setView('buildStep')
+  }
+
+  const closeSelector = () => {
+    setSelectorContext(null)
+    setSelectorStep(null)
+    window.history.pushState({}, '', toAppHref('/manual-builder'))
+    setView('manualBuilder')
   }
 
   return (
@@ -149,6 +174,7 @@ function LandingPage() {
             onHomeClick={goHome}
             onBuildClick={openBuilder}
             onPartsClick={openPartsAdmin}
+            onMyBuildsClick={openMyBuilds}
             activeView={view}
           />
         </RevealOnView>
@@ -176,7 +202,26 @@ function LandingPage() {
               presetId={manualBuildContext.presetId}
               budget={manualBuildContext.budget}
               presetBuild={manualBuildContext.build}
+              requestOpenSelector={requestOpenSelector}
             />
+          </RevealOnView>
+        ) : view === 'buildStep' ? (
+          <ComponentSelector
+            mode="page"
+            step={selectorStep || 'cpu'}
+            currentSelections={selectorContext?.currentSelections || {}}
+            onBack={closeSelector}
+            onSelect={(part) => {
+              try {
+                selectorContext?.onSelect && selectorContext.onSelect(part)
+              } finally {
+                closeSelector()
+              }
+            }}
+          />
+        ) : view === 'myBuilds' ? (
+          <RevealOnView>
+            <MyBuildsPage onBack={goHome} onLoadBuild={(build) => openManualBuilder({ presetId: 'manual', budget: 85000, build })} />
           </RevealOnView>
         ) : view === 'partsAdmin' ? (
           <RevealOnView>
@@ -184,9 +229,7 @@ function LandingPage() {
           </RevealOnView>
         ) : view === 'signup' ? (
           <RevealOnView>
-            <SignUpPage
-              onBack={goHome}
-            />
+            <SignUpPage onBack={goHome} />
           </RevealOnView>
         ) : (
           <RevealOnView>
